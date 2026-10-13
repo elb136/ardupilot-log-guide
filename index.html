@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ArduPilot Log Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a field manual. Sticky chip nav, then one panel per failure mode: what to plot, an interactive problem/healthy graph, how to react, which params. */
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --ink:#13202B; --muted:#5A6875; --rule:#D3DBE3; --grid:#E3E8ED;
+  --accent:#D9480F; --accent-ink:#FFFFFF;
+  --s1:#1F6FD1; --s2:#E07A00; --s3:#0F9D8A; --s4:#B03A9A;
+  --ok:#2F9E44; --warn:#D99A00; --bad:#D92D20;
+  --code-bg:#E6EBF0;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E141A; --panel:#151D25; --ink:#E3E9EF; --muted:#93A1AE; --rule:#2A3642; --grid:#1F2A34;
+  --accent:#FF7A3D; --accent-ink:#1A0E06;
+  --s1:#5AA2FF; --s2:#FFA53D; --s3:#3FD1BB; --s4:#E27BD0;
+  --ok:#4CC46A; --warn:#F2C14E; --bad:#FF6B5E; --code-bg:#1E2832; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141A; --panel:#151D25; --ink:#E3E9EF; --muted:#93A1AE; --rule:#2A3642; --grid:#1F2A34;
+  --accent:#FF7A3D; --accent-ink:#1A0E06;
+  --s1:#5AA2FF; --s2:#FFA53D; --s3:#3FD1BB; --s4:#E27BD0;
+  --ok:#4CC46A; --warn:#F2C14E; --bad:#FF6B5E; --code-bg:#1E2832; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:24px 64px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:80%;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.6rem;font-weight:750}
+h3{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-stretch:100%}
+p{margin:0;max-width:68ch}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+code{background:var(--code-bg);padding:.08em .35em;border-radius:3px;white-space:nowrap}
+pre{background:var(--code-bg);padding:12px 14px;border-radius:6px;overflow-x:auto;margin:0;font-size:.82rem;line-height:1.5}
+pre code{background:none;padding:0;white-space:pre}
+a{color:var(--s1)}
+.hero{display:grid;gap:12px;padding-block:8px 20px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.lede{font-size:1.05rem;color:var(--muted)}
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--rule);margin-inline:-16px;padding:10px 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin}
+nav.toc a{flex:none;font-family:var(--f-mono);font-size:.74rem;text-decoration:none;color:var(--ink);border:1px solid var(--rule);background:var(--panel);padding:4px 9px;border-radius:999px}
+nav.toc a:hover,nav.toc a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.group{margin-top:40px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.group h2{font-size:1.1rem;text-transform:uppercase;letter-spacing:.08em;font-stretch:100%;color:var(--muted)}
+.group::after{content:"";flex:1;border-top:1px solid var(--rule);min-width:40px}
+section.case,section.block{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:20px;margin-top:16px;display:grid;gap:16px;scroll-margin-top:64px}
+.case-head{display:grid;gap:6px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-size:.72rem;font-weight:600;padding:2px 7px;border-radius:3px;background:var(--ink);color:var(--panel)}
+.symptom{color:var(--muted)}
+.symptom b{color:var(--ink);font-weight:600}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.col{display:grid;gap:10px;min-width:0}
+dl.fields{margin:0;display:grid;gap:6px}
+dl.fields div{display:grid;grid-template-columns:minmax(7.5em,auto) 1fr;gap:10px;align-items:baseline}
+dl.fields dt{font-family:var(--f-mono);font-size:.8rem;font-weight:600}
+dl.fields dd{margin:0;color:var(--ink)}
+.thresh{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:.78rem;padding:2px 8px;border-radius:999px;border:1px solid currentColor;font-weight:500}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}
+ul.react{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+ul.react li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline}
+ul.react li::before{content:"→";color:var(--accent);font-weight:700}
+.see{font-weight:600}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td:first-child{font-family:var(--f-mono);font-size:.8rem;font-weight:600;white-space:nowrap}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:.8rem;white-space:nowrap}
+figure.chart{margin:0;border:1px solid var(--rule);border-radius:6px;padding:10px 10px 12px;display:grid;gap:8px;background:var(--panel)}
+.chart-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.chart-title{font-family:var(--f-mono);font-size:.76rem;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:2px}
+.seg button{font:600 .74rem var(--f-body);border:0;background:none;color:var(--muted);padding:4px 10px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.seg button[aria-pressed="true"].bad{background:var(--bad);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+svg.plot{width:100%;height:auto;display:block}
+svg.plot text{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
+svg.plot .gl{stroke:var(--grid);stroke-width:1}
+svg.plot .ax{stroke:var(--rule)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--f-mono);font-size:.74rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.note{font-size:.88rem;border-left:3px solid var(--rule);padding-left:10px;color:var(--ink)}
+.note.bad{border-color:var(--bad)}.note.ok{border-color:var(--ok)}
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:12px}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:2.2em 1fr;gap:10px}
+ol.steps li::before{content:counter(s);font-family:var(--f-display);font-weight:800;font-size:1.4rem;color:var(--accent);line-height:1}
+.callout{background:var(--code-bg);border-radius:6px;padding:12px 14px;font-size:.9rem}
+.small{font-size:.82rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">ArduCopter · DataFlash (.BIN) logs</div>
+  <h1>Reading ArduPilot Logs</h1>
+  <p class="lede">A triage order, then every common failure mode: which messages to plot, what healthy and broken look like, what to do about it, and which parameters to touch. Each graph is synthetic but shaped like the real thing; flip between <b>Problem</b> and <b>Healthy</b>.</p>
+  <p class="small">Message and parameter names follow Copter 4.5/4.6. A few position-controller and filter names change between major versions, so confirm against your firmware's parameter list before writing values.</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#triage">Triage</a><a href="#err">ERR codes</a><a href="#vibe">VIBE</a><a href="#fft">Notch/FFT</a><a href="#rate">PID tuning</a><a href="#att">Crash</a><a href="#motors">Motors</a><a href="#batt">Battery</a><a href="#vcc">Board power</a><a href="#mag">Compass</a><a href="#gps">GPS</a><a href="#ekf">EKF</a><a href="#alt">Alt hold</a><a href="#loiter">Loiter</a><a href="#flow">Optical flow</a><a href="#rc">RC failsafe</a><a href="#cpu">CPU/logging</a><a href="#params">Param sheet</a>
+</nav>
+
+<!-- ============ TRIAGE ============ -->
+<div class="group"><h2>Start here</h2></div>
+
+<section class="block" id="triage">
+  <div class="case-head"><h2>The first five minutes with a log</h2>
+  <p class="symptom">Read the story before you read the sensors. Text, errors and mode changes give you a timestamp; then you zoom ±10 s around it and check systems in a fixed order.</p></div>
+  <ol class="steps">
+    <li><div><b>Get the right file.</b> Use the DataFlash <code>.BIN</code> from the SD card or MAVFTP, not the <code>.tlog</code> (telemetry is low-rate and drops packets). Check <code>LOG_BITMASK</code> includes ATTITUDE, RCOUT, PID, IMU, MOTBATT; the default covers this. For filter work, enable batch or raw IMU logging (see Notch/FFT).</div></li>
+    <li><div><b>Read <code>MSG</code>.</b> Every warning the GCS showed is here with a timestamp: <i>Potential Thrust Loss</i>, <i>Yaw Imbalance</i>, <i>Vibration compensation ON</i>, <i>EKF3 IMU1 switched</i>, <i>GPS Glitch</i>, <i>Crash: Disarming</i>. Also the firmware version and board info at the top.</div></li>
+    <li><div><b>Read <code>ERR</code> and <code>EV</code>.</b> ERR gives subsystem + code (table below). EV gives armed (10), disarmed (11), land complete (18) and similar events. ECode 0 almost always means "cleared".</div></li>
+    <li><div><b>Read <code>MODE</code>.</b> <code>Mode</code> and <code>Rsn</code> (reason): 1 = pilot RC, 2 = GCS, 3 = radio failsafe, 4 = battery failsafe, 5 = GCS failsafe, 6 = EKF failsafe. A mode change you didn't command is your timestamp.</div></li>
+    <li><div><b>Then systems, in this order:</b> VIBE → RCOU/MOTB → BAT/POWR → ATT/RATE → XKF4/GPS/MAG → PM. Vibration and power problems cause symptoms in everything after them, so rule them out first.</div></li>
+    <li><div><b>Work backwards from the event.</b> Physical failures show up in RCOU first (a motor saturates), then in ATT (attitude error grows), then in the EKF and position. The earliest abnormal signal is usually the cause.</div></li>
+  </ol>
+  <div class="cols">
+    <div class="col"><h3>Tools</h3>
+      <dl class="fields">
+        <div><dt>MAVExplorer</dt><dd>Fastest for engineers. <code>graph VIBE.VibeZ</code>, <code>graph RATE.RDes RATE.R</code>, <code>messages</code>, math like <code>graph sqrt(MAG.MagX**2+MAG.MagY**2+MAG.MagZ**2)</code>.</dd></div>
+        <div><dt>UAV Log Viewer</dt><dd>plot.ardupilot.org, in the browser, 3D track plus plots.</dd></div>
+        <div><dt>WebTools</dt><dd>Filter Review (notch setup from batch/raw IMU), MAGFit (compass cal from a flight log), PID Review.</dd></div>
+        <div><dt>Mission Planner</dt><dd>"Review a Log" and auto-analysis. Good for a quick pass, too coarse for tuning.</dd></div>
+      </dl>
+    </div>
+    <div class="col"><h3>Timeline dump with pymavlink</h3>
+<pre><code>from pymavlink import mavutil
+
+log = mavutil.mavlink_connection("00000042.BIN")
+while True:
+    m = log.recv_match(type=["MSG", "ERR", "EV", "MODE"])
+    if m is None:
+        break
+    print(f"{m.TimeUS/1e6:9.2f}s  {m.get_type():4}  {m.to_dict()}")</code></pre>
+    <p class="small">Print this first on every log. Most crashes are explained by the 20 lines before the last one.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="err">
+  <div class="case-head"><h2>ERR codes you will actually see</h2>
+  <p class="symptom">Subsystem identifies what complained; ECode says how. 0 is "resolved" for most subsystems.</p></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Subsys</th><th>Meaning</th><th>Common ECodes</th><th>Go look at</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>Radio</td><td>2 = late frame (RC signal lost), 0 = back</td><td>RCIN, RSSI</td></tr>
+      <tr><td>3</td><td>Compass</td><td>1 = failed to init, 4 = unhealthy</td><td>MAG, wiring, I2C</td></tr>
+      <tr><td>5</td><td>Radio failsafe</td><td>1 = triggered, 0 = cleared</td><td>RCIN.C3, FS_THR_*</td></tr>
+      <tr><td>6</td><td>Battery failsafe</td><td>1 = low, 2 = critical</td><td>BAT, BATT_*</td></tr>
+      <tr><td>8</td><td>GCS failsafe</td><td>1 = triggered</td><td>telemetry link</td></tr>
+      <tr><td>10</td><td>Flight mode</td><td>ECode = mode number it refused to enter</td><td>EKF/GPS state at that moment</td></tr>
+      <tr><td>11</td><td>GPS</td><td>2 = glitch, 0 = cleared</td><td>GPS, GPA, XKF4.SP</td></tr>
+      <tr><td>12</td><td>Crash check</td><td>1 = crash, 2 = loss of control</td><td>ATT, RCOU</td></tr>
+      <tr><td>16</td><td>EKF check</td><td>2 = bad variance, 0 = cleared</td><td>XKF4</td></tr>
+      <tr><td>17</td><td>EKF failsafe</td><td>1 = triggered</td><td>XKF4, MAG, GPS</td></tr>
+      <tr><td>18</td><td>Barometer</td><td>4 = unhealthy</td><td>BARO</td></tr>
+      <tr><td>24</td><td>EKF primary changed</td><td>ECode = new lane</td><td>IMU, VIBE per instance</td></tr>
+      <tr><td>25</td><td>Thrust loss</td><td>1 = detected</td><td>RCOU, MOTB, BAT</td></tr>
+      <tr><td>29</td><td>Vibration failsafe</td><td>1 = triggered</td><td>VIBE</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ SHAKE & TUNE ============ -->
+<div class="group"><h2>Vibration and tuning</h2></div>
+
+<section class="case" id="vibe">
+  <div class="case-head">
+    <div class="tags"><span class="tag">VIBE</span><span class="tag">IMU</span></div>
+    <h2>Vibration</h2>
+    <p class="symptom"><b>Symptoms:</b> altitude climbs or drops in AltHold/Loiter, toilet-bowling, "Vibration compensation ON", hot motors, mushy position hold.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>VIBE.VibeX/Y/Z</dt><dd>Accel vibration, m/s². Z matters most because it feeds altitude.</dd></div>
+        <div><dt>VIBE.Clip</dt><dd>Count of accel samples that hit the sensor range. Should stay flat. Any rise means the accel saturated.</dd></div>
+        <div><dt>VIBE.IMU</dt><dd>Instance. Compare IMUs; a single bad one points to mounting, not props.</dd></div>
+        <div><dt>IMU.AccZ</dt><dd>Raw view. Hover should sit near −9.8 with a narrow band.</dd></div>
+      </dl>
+      <div class="thresh"><span class="pill ok">&lt;15 great</span><span class="pill ok">15–30 OK</span><span class="pill warn">30–60 problems</span><span class="pill bad">&gt;60 position/alt hold will fail</span></div>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">All axes high, Clip rising:</span> mechanical first. Balance or replace props, check bent shafts and bearings, tighten the frame, soft-mount the FC.</span></li>
+        <li><span><span class="see">Only Z high:</span> usually props or a flexing arm/stack. On whoops, check the flight controller isn't touching the canopy.</span></li>
+        <li><span><span class="see">One IMU bad, others fine:</span> that IMU's mounting or a damaged sensor. Use <code>EK3_IMU_MASK</code> to drop it while you fix it.</span></li>
+        <li><span><span class="see">High only at high throttle:</span> resonance in the frame. Check the FFT section and add a harmonic notch.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="vibe"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>INS_ACCEL_FILTER</td><td>Accel low-pass. Lowering helps a little, but hides the problem rather than fixing it.</td><td class="num">20 Hz</td></tr>
+    <tr><td>FS_VIBE_ENABLE</td><td>Switches to vibration-resistant altitude estimation when it detects bad vibe.</td><td class="num">1</td></tr>
+    <tr><td>EK3_IMU_MASK</td><td>Which IMUs the EKF uses. Exclude a damaged one.</td><td class="num">3</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="fft">
+  <div class="case-head">
+    <div class="tags"><span class="tag">ISBH/ISBD</span><span class="tag">FTN</span><span class="tag">ESC</span></div>
+    <h2>Gyro noise and the harmonic notch</h2>
+    <p class="symptom"><b>Symptoms:</b> hot motors, high D-term noise, can't raise PIDs without oscillation, jitter at specific throttle.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>Batch sampler</dt><dd>Set <code>INS_LOG_BAT_MASK=1</code> and <code>INS_LOG_BAT_OPT=4</code> to log both pre- and post-filter gyro. Fly a 1–2 min hover with some throttle changes.</dd></div>
+        <div><dt>Filter Review</dt><dd>WebTools → Filter Review. Load the log, you get this spectrum, then edit notch params live to see the effect.</dd></div>
+        <div><dt>ESC.RPM</dt><dd>If you have BDShot/ESC telemetry, motor frequency is RPM/60 Hz, and the notch can track it exactly.</dd></div>
+        <div><dt>RATE.ROut / POut</dt><dd>Fuzzy outputs mean noise is getting through to the motors.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Peak at motor fundamental + harmonics:</span> enable the harmonic notch. With ESC telemetry use <code>INS_HNTCH_MODE=3</code>; otherwise throttle-based (1) with <code>INS_HNTCH_REF</code> = hover throttle.</span></li>
+        <li><span><span class="see">Post-filter still shows the peak:</span> the notch is in the wrong place. Re-check FREQ/REF, or the notch isn't tracking (wrong MODE, no RPM data).</span></li>
+        <li><span><span class="see">Separate peaks per motor:</span> use per-motor notches (<code>INS_HNTCH_OPTS</code> bit 1) with ESC RPM.</span></li>
+        <li><span><span class="see">Broad noise floor, no peak:</span> mechanical. Fix props and mounting; notches only remove narrow peaks.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="fft"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>INS_HNTCH_ENABLE</td><td>Enables notch 1 (reboot to see the rest).</td><td class="num">1</td></tr>
+    <tr><td>INS_HNTCH_MODE</td><td>1 throttle, 3 ESC telemetry, 4 in-flight FFT.</td><td class="num">3 if BDShot</td></tr>
+    <tr><td>INS_HNTCH_FREQ</td><td>Center at hover (or minimum with ESC mode).</td><td class="num">peak Hz</td></tr>
+    <tr><td>INS_HNTCH_BW</td><td>Bandwidth; about half of FREQ.</td><td class="num">FREQ/2</td></tr>
+    <tr><td>INS_HNTCH_REF</td><td>Throttle mode: hover throttle (= MOT_THST_HOVER). ESC mode: 1.</td><td class="num">0.2–0.35</td></tr>
+    <tr><td>INS_HNTCH_HMNCS</td><td>Bitmask of harmonics: 1 = fundamental, 3 = 1st+2nd.</td><td class="num">3</td></tr>
+    <tr><td>INS_GYRO_FILTER</td><td>Gyro low-pass. Raise once notches clean the spectrum (less lag).</td><td class="num">40–80 Hz</td></tr>
+    <tr><td>ATC_RAT_*_FLTD</td><td>D-term filter per axis. Lower if D-term noise remains.</td><td class="num">≈ gyro/2</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="rate">
+  <div class="case-head">
+    <div class="tags"><span class="tag">RATE</span><span class="tag">PIDR/PIDP/PIDY</span><span class="tag">ATT</span></div>
+    <h2>PID tuning: desired vs actual</h2>
+    <p class="symptom"><b>Symptoms:</b> wobble on stops, bounce-back after flips, sluggish response, oscillation at high throttle or in descent.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>RATE.RDes vs R</dt><dd>Desired vs actual roll rate (deg/s). Same for PDes/P, YDes/Y. This is the main tuning plot.</dd></div>
+        <div><dt>RATE.ROut</dt><dd>Controller output. Should be smooth; saturating at ±1 means out of authority.</dd></div>
+        <div><dt>PIDR.P/I/D/FF</dt><dd>Term contributions. Large D swinging fast is noise; large I wandering means CG or a motor offset.</dd></div>
+        <div><dt>ATT.DesRoll vs Roll</dt><dd>Angle level. Use after rates look good.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Fast, sustained oscillation (fuzzy band):</span> P or D too high, or noise. Lower <code>ATC_RAT_RLL_D</code> first, then P by 10–20%. Check FFT before blaming PIDs.</span></li>
+        <li><span><span class="see">Big overshoot, slow ringing:</span> P too high for the D, or I too high. Raise D slightly or lower P.</span></li>
+        <li><span><span class="see">Actual lags desired with no overshoot:</span> too soft. Raise P (and I to match), or run AutoTune.</span></li>
+        <li><span><span class="see">Oscillates only at high throttle:</span> thrust curve. Raise <code>MOT_THST_EXPO</code>, or lower P/D; check <code>MOT_BAT_VOLT_MAX/MIN</code> are set.</span></li>
+        <li><span><span class="see">Oscillates only in fast descent:</span> prop wash. Usually accept it, or slightly raise D.</span></li>
+        <li><span><span class="see">PIDY.I parked far from zero:</span> motors tilted or one weaker; the yaw I is holding a constant offset.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="rate"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Note</th></tr></thead><tbody>
+    <tr><td>ATC_RAT_RLL_P/I/D</td><td>Roll rate PID (PIT, YAW equivalents).</td><td>Keep I ≈ P on roll/pitch</td></tr>
+    <tr><td>ATC_RAT_RLL_FF</td><td>Feed-forward. Small values sharpen stick response.</td><td>Usually 0 on copters</td></tr>
+    <tr><td>ATC_ANG_RLL_P</td><td>Angle → rate gain. Too high causes slow wobble in Stabilize.</td><td class="num">4.5–12</td></tr>
+    <tr><td>ATC_ACCEL_R_MAX</td><td>Max rotation acceleration. Lower = smoother, less overshoot.</td><td>Set by AutoTune</td></tr>
+    <tr><td>ATC_INPUT_TC</td><td>Stick feel softness.</td><td class="num">0.1–0.2</td></tr>
+    <tr><td>MOT_THST_EXPO</td><td>Thrust linearization. Too low → high-throttle oscillation.</td><td class="num">0.55–0.75</td></tr>
+    <tr><td>AUTOTUNE_AXES / _AGGR</td><td>AutoTune scope and aggressiveness.</td><td class="num">7 / 0.1</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="att">
+  <div class="case-head">
+    <div class="tags"><span class="tag">ATT</span><span class="tag">ERR 12</span><span class="tag">RCOU</span></div>
+    <h2>Crash or loss of control</h2>
+    <p class="symptom"><b>Symptoms:</b> "Crash: Disarming", sudden flip, log ends mid-air, ERR subsystem 12.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>ATT.DesRoll vs Roll</dt><dd>Divergence (actual runs away while desired stays put) means the airframe could not follow.</dd></div>
+        <div><dt>RCOU.C1–C4</dt><dd>Which motor saturated just before. This names the failed corner.</dd></div>
+        <div><dt>BAT / POWR</dt><dd>Voltage collapse → brownout. A log that just stops with no ERR, at speed, is often a power loss.</dd></div>
+        <div><dt>CTUN.ThO</dt><dd>Throttle output at the moment. 100% means it was already out of headroom.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">One motor maxed, attitude diverges toward that corner:</span> motor, ESC, or prop failure on that corner. Inspect and bench-test that ESC/motor.</span></li>
+        <li><span><span class="see">All motors maxed, roll/pitch drift:</span> overweight or battery sag; no authority left. See Motors and Battery.</span></li>
+        <li><span><span class="see">Attitude fine, then log stops:</span> power loss or brownout. Check POWR.Vcc trend, BEC, battery connector.</span></li>
+        <li><span><span class="see">Desired itself went wild:</span> it was commanded. Look at RCIN and MODE (bad nav, flyaway from EKF/GPS, or pilot input).</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="att"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>FS_CRASH_CHECK</td><td>Disarm when crash detected (angle error &gt;30° for 2 s, not moving).</td><td class="num">1</td></tr>
+    <tr><td>ANGLE_MAX</td><td>Max lean angle, in centidegrees.</td><td class="num">3000–4500</td></tr>
+    <tr><td>ATC_THR_MIX_MAN</td><td>How much attitude control can steal from throttle. Higher keeps control at low throttle.</td><td class="num">0.1–0.9</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ============ POWER ============ -->
+<div class="group"><h2>Power and propulsion</h2></div>
+
+<section class="case" id="motors">
+  <div class="case-head">
+    <div class="tags"><span class="tag">RCOU</span><span class="tag">MOTB</span><span class="tag">CTUN</span></div>
+    <h2>Motor outputs, thrust loss, yaw imbalance</h2>
+    <p class="symptom"><b>Symptoms:</b> "Potential Thrust Loss (n)", "Yaw Imbalance x%", drifting yaw, a corner that sags, motors different temperatures.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>RCOU.C1–C4</dt><dd>PWM to each motor. In hover they should sit close together, mid-range.</dd></div>
+        <div><dt>MOTB.ThLimit</dt><dd>Throttle limit applied (e.g. by battery or saturation).</dd></div>
+        <div><dt>MOTB.FailFlags</dt><dd>Motor failure / thrust boost flags.</dd></div>
+        <div><dt>CTUN.ThO / ThH</dt><dd>Throttle out and learned hover throttle.</dd></div>
+      </dl>
+      <p class="small">Quad X order: 1 front-right (CCW), 2 rear-left (CCW), 3 front-left (CW), 4 rear-right (CW). 1↔2 and 3↔4 are diagonals.</p>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">One motor pinned at max, its diagonal at min:</span> that motor produces less thrust than commanded. Check prop, motor bearings, ESC, cracked prop. Also "Thrust Loss" if it lasts.</span></li>
+        <li><span><span class="see">CW pair high, CCW pair low (or reverse):</span> yaw imbalance. Twisted arm or tilted motor, mismatched props, or one weak motor. Small offsets (&lt;50 µs) are normal.</span></li>
+        <li><span><span class="see">Front pair consistently higher than rear:</span> CG forward. Move the battery.</span></li>
+        <li><span><span class="see">All high in hover (ThH &gt; 0.6):</span> overweight or underpropped. Little headroom left for control.</span></li>
+        <li><span><span class="see">ThH &lt; 0.15:</span> overpowered, resolution poor at hover. Consider lower KV or smaller props; set MOT_SPIN_MIN carefully.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="motors"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>MOT_PWM_MIN/MAX</td><td>Output range. Must match ESC calibration (ignored with DShot).</td><td class="num">1000 / 2000</td></tr>
+    <tr><td>MOT_SPIN_ARM</td><td>Idle spin when armed.</td><td class="num">0.06–0.10</td></tr>
+    <tr><td>MOT_SPIN_MIN</td><td>Lowest throttle in flight. Must be above ARM and keep motors reliably spinning.</td><td class="num">0.12–0.15</td></tr>
+    <tr><td>MOT_THST_HOVER</td><td>Hover throttle; auto-learned with MOT_HOVER_LEARN=2.</td><td class="num">0.2–0.4</td></tr>
+    <tr><td>MOT_YAW_HEADROOM</td><td>Output reserved for yaw. Raise if yaw can't hold.</td><td class="num">200</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="batt">
+  <div class="case-head">
+    <div class="tags"><span class="tag">BAT</span><span class="tag">ERR 6</span></div>
+    <h2>Battery sag and false failsafes</h2>
+    <p class="symptom"><b>Symptoms:</b> battery failsafe triggers on a punch with plenty of capacity left, power drops late in the flight, RTL earlier than expected.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>BAT.Volt</dt><dd>Measured voltage under load.</dd></div>
+        <div><dt>BAT.VoltR</dt><dd>Resting voltage estimate (sag-compensated, uses the internal resistance estimate).</dd></div>
+        <div><dt>BAT.Curr / CurrTot</dt><dd>Current and mAh used. Compare CurrTot to what you actually put back on the charger to validate the sensor.</dd></div>
+        <div><dt>BAT.Res</dt><dd>Estimated internal resistance. Rising across flights = pack aging.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Volt dips under BATT_LOW_VOLT only on punches, VoltR stays above:</span> false trigger. Set <code>BATT_FS_VOLTSRC=1</code> so the failsafe uses sag-compensated voltage.</span></li>
+        <li><span><span class="see">Dips &gt;0.3 V per cell under load:</span> pack weak, too small (C-rating), or a bad connector/thin lead. Measure lead temperature.</span></li>
+        <li><span><span class="see">CurrTot doesn't match recharge mAh:</span> recalibrate <code>BATT_AMP_PERVLT</code> (and <code>BATT_AMP_OFFSET</code>).</span></li>
+        <li><span><span class="see">Handling changes as the pack drains:</span> set <code>MOT_BAT_VOLT_MAX/MIN</code> so the PIDs are compensated for voltage.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="batt"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical (4S Li-ion/LiPo)</th></tr></thead><tbody>
+    <tr><td>BATT_LOW_VOLT</td><td>Low failsafe threshold.</td><td class="num">14.0 (3.5/cell)</td></tr>
+    <tr><td>BATT_CRT_VOLT</td><td>Critical threshold.</td><td class="num">13.6 (3.4/cell)</td></tr>
+    <tr><td>BATT_FS_VOLTSRC</td><td>0 = raw, 1 = sag-compensated.</td><td class="num">1</td></tr>
+    <tr><td>BATT_LOW_TIMER</td><td>Seconds below threshold before triggering.</td><td class="num">10</td></tr>
+    <tr><td>BATT_FS_LOW_ACT</td><td>Action: 1 land, 2 RTL, 3 SmartRTL…</td><td class="num">2</td></tr>
+    <tr><td>BATT_LOW_MAH</td><td>Capacity-based trigger (more reliable than voltage if the sensor is calibrated).</td><td class="num">~20% of pack</td></tr>
+    <tr><td>MOT_BAT_VOLT_MAX/MIN</td><td>Voltage compensation range for thrust.</td><td class="num">16.8 / 13.2</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="vcc">
+  <div class="case-head">
+    <div class="tags"><span class="tag">POWR</span></div>
+    <h2>Flight controller power</h2>
+    <p class="symptom"><b>Symptoms:</b> random reboots, log ends with no error, sensor glitches when servos/VTX/camera switch, compass jumping.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>POWR.Vcc</dt><dd>FC 5 V rail. Should be flat, ±0.1 V.</dd></div>
+        <div><dt>POWR.VServo</dt><dd>Servo rail voltage (if the board measures it).</dd></div>
+        <div><dt>POWR.Flags</dt><dd>Power source bits and USB connected. Changing flags in flight = a source dropped out.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Dips synchronous with servo or VTX activity:</span> shared BEC is overloaded. Give servos/VTX their own BEC, add a low-ESR capacitor.</span></li>
+        <li><span><span class="see">Slow downward drift:</span> BEC overheating or current-limiting.</span></li>
+        <li><span><span class="see">Vcc fine but log ends abruptly:</span> check the battery lead and XT connector; look at BAT.Volt just before the end.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="vcc"></figure></div>
+  </div>
+</section>
+
+<!-- ============ NAV ============ -->
+<div class="group"><h2>Navigation and estimation</h2></div>
+
+<section class="case" id="mag">
+  <div class="case-head">
+    <div class="tags"><span class="tag">MAG</span><span class="tag">XKF4.SM</span><span class="tag">BAT.Curr</span></div>
+    <h2>Compass interference</h2>
+    <p class="symptom"><b>Symptoms:</b> toilet-bowling in Loiter, heading wrong after a punch, "EKF3 yaw reset", circling that grows with throttle.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>|MAG|</dt><dd>Field length: <code>sqrt(MagX²+MagY²+MagZ²)</code>. Should be nearly constant during a flight (local field, roughly 400–550 mGauss depending on location).</dd></div>
+        <div><dt>BAT.Curr</dt><dd>Overlay with |MAG|. Correlation = power-wire interference.</dd></div>
+        <div><dt>MAG vs MAG2</dt><dd>Compare instances. External (on a mast) should be steady; internal one usually tracks current.</dd></div>
+        <div><dt>XKF4.SM</dt><dd>Mag innovation test ratio. Above 1 = EKF rejecting the compass.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">|MAG| moves &gt;10–20% with current:</span> move the compass away from power leads and ESCs, twist battery leads. Then run compassmot or MAGFit with <code>COMPASS_MOTCT=2</code>.</span></li>
+        <li><span><span class="see">Internal compass bad, external fine:</span> disable the internal one with <code>COMPASS_USE2=0</code> (or whichever instance).</span></li>
+        <li><span><span class="see">Constant heading offset vs GPS track in straight flight:</span> wrong <code>COMPASS_ORIENT</code> or bad calibration. Recalibrate; MAGFit can solve it from a flight log.</span></li>
+        <li><span><span class="see">Can't fix it:</span> run without a compass using GSF yaw (<code>COMPASS_ENABLE=0</code>, <code>EK3_SRC1_YAW=8</code>). Needs GPS and some forward motion to align.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="mag"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>COMPASS_MOTCT</td><td>Motor compensation type: 1 throttle, 2 current.</td><td class="num">2</td></tr>
+    <tr><td>COMPASS_MOT_X/Y/Z</td><td>Compensation per amp. Set by compassmot or MAGFit.</td><td>from tool</td></tr>
+    <tr><td>COMPASS_ORIENT</td><td>External compass rotation.</td><td>match mount</td></tr>
+    <tr><td>COMPASS_USE / USE2 / USE3</td><td>Which compasses are used.</td><td>external only</td></tr>
+    <tr><td>EK3_MAG_CAL</td><td>EKF in-flight mag learning.</td><td class="num">3</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="gps">
+  <div class="case-head">
+    <div class="tags"><span class="tag">GPS</span><span class="tag">GPA</span><span class="tag">ERR 11</span></div>
+    <h2>GPS quality and interference</h2>
+    <p class="symptom"><b>Symptoms:</b> "GPS Glitch", Loiter drifts or jumps, can't arm in Loiter, position wanders while stationary.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>GPS.NSats</dt><dd>Satellites used. Want &gt;12 for multi-GNSS.</dd></div>
+        <div><dt>GPS.HDop</dt><dd>Horizontal dilution. &lt;1.0 good, &gt;1.4 weak.</dd></div>
+        <div><dt>GPA.HAcc / SAcc</dt><dd>Receiver's own accuracy estimates (m, m/s). Better than HDop on modern receivers.</dd></div>
+        <div><dt>GPA.Delta</dt><dd>Interval between updates, ms. Jitter or gaps = link or CPU problem.</dd></div>
+        <div><dt>XKF4.SP / SV</dt><dd>EKF position/velocity test ratios. Shows whether the EKF believes the GPS.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">NSats drops when something powers on:</span> RF interference. VTX harmonics, USB 3, cameras and SD cards are common. Move the GPS up and away, shield, or change VTX channel.</span></li>
+        <li><span><span class="see">Steady low NSats:</span> enable more constellations (<code>GPS_GNSS_MODE</code>), check antenna has sky view.</span></li>
+        <li><span><span class="see">Position jumps but NSats OK:</span> multipath. Fly away from buildings; raise <code>EK3_GLITCH_RAD</code> only if you understand the risk.</span></li>
+        <li><span><span class="see">Position leans during fast turns:</span> antenna offset not set. Fill in <code>GPS_POS1_X/Y/Z</code>.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="gps"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>GPS_GNSS_MODE</td><td>Constellation bitmask (GPS, SBAS, Galileo, BeiDou, GLONASS…). 0 = receiver default.</td><td class="num">0 / tuned</td></tr>
+    <tr><td>GPS_HDOP_GOOD</td><td>Pre-arm HDop limit (×100).</td><td class="num">140</td></tr>
+    <tr><td>GPS_POS1_X/Y/Z</td><td>Antenna offset from CG, metres.</td><td>measure</td></tr>
+    <tr><td>EK3_GLITCH_RAD</td><td>Radius before EKF declares a glitch.</td><td class="num">25 m</td></tr>
+    <tr><td>EK3_CHECK_SCALE</td><td>Scales EKF consistency checks. Raising it hides problems.</td><td class="num">100</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="ekf">
+  <div class="case-head">
+    <div class="tags"><span class="tag">XKF4</span><span class="tag">XKF3</span><span class="tag">ERR 16/17/24</span></div>
+    <h2>EKF health</h2>
+    <p class="symptom"><b>Symptoms:</b> "EKF variance", EKF failsafe → Land, lane switches, "EKF3 IMU0 forced reset", flyaway.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>XKF4.SV / SP / SH / SM</dt><dd>Test ratios for velocity, horizontal position, height, magnetometer. Below 1 means the measurement was accepted. Each core logs its own (C field).</dd></div>
+        <div><dt>XKF3.I*</dt><dd>Innovations: measurement minus prediction. A persistent bias shows which sensor disagrees.</dd></div>
+        <div><dt>XKF4.SS</dt><dd>Solution status bitmask.</dd></div>
+        <div><dt>ERR 24 / MSG</dt><dd>Which lane (IMU) became primary and when.</dd></div>
+      </dl>
+      <div class="thresh"><span class="pill ok">&lt;0.5 healthy</span><span class="pill warn">0.5–1 watch</span><span class="pill bad">&gt;1 rejected</span></div>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">SM climbs with throttle:</span> compass interference. See Compass.</span></li>
+        <li><span><span class="see">SV and SP spike together:</span> GPS glitch. See GPS.</span></li>
+        <li><span><span class="see">SH high:</span> baro vs GPS/accel height disagree. Prop wash on baro (foam it), or Z vibration.</span></li>
+        <li><span><span class="see">Frequent lane switches:</span> one IMU disagrees. Compare VIBE per IMU and IMU temperatures.</span></li>
+        <li><span><span class="see">EKF failsafe:</span> it triggers when two of compass, position, velocity variances exceed <code>FS_EKF_THRESH</code>. Fix the sensor; don't just raise the threshold.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="ekf"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>FS_EKF_THRESH</td><td>Variance threshold for EKF failsafe.</td><td class="num">0.8</td></tr>
+    <tr><td>FS_EKF_ACTION</td><td>1 land, 2 AltHold, 3 land even in Stabilize.</td><td class="num">1</td></tr>
+    <tr><td>EK3_IMU_MASK</td><td>IMUs that run an EKF lane.</td><td class="num">3</td></tr>
+    <tr><td>EK3_SRC1_*</td><td>Sources for position, velocity, height, yaw.</td><td>GPS/baro/compass</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="alt">
+  <div class="case-head">
+    <div class="tags"><span class="tag">CTUN</span><span class="tag">BARO</span></div>
+    <h2>Altitude hold</h2>
+    <p class="symptom"><b>Symptoms:</b> bouncing in AltHold, climbs on punches, drops in fast forward flight, slow to stop climbs.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>CTUN.DAlt vs Alt</dt><dd>Desired vs estimated altitude.</dd></div>
+        <div><dt>CTUN.BAlt</dt><dd>Raw baro altitude. Compare to Alt to see baro errors.</dd></div>
+        <div><dt>CTUN.DCRt vs CRt</dt><dd>Desired vs actual climb rate.</dd></div>
+        <div><dt>CTUN.ThO / ThH</dt><dd>Throttle out and hover estimate. ThH should converge and stay stable.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Slow bounce (0.3–1 Hz):</span> vertical controller too aggressive. Lower <code>PSC_ACCZ_P</code> and <code>PSC_ACCZ_I</code> together (keep I = 2×P).</span></li>
+        <li><span><span class="see">Alt drifts while DAlt is constant, VibeZ high:</span> vibration. Fix VIBE first.</span></li>
+        <li><span><span class="see">BAlt dips in fast forward flight:</span> static pressure effect on the baro. Cover the baro with open-cell foam, shield from airflow.</span></li>
+        <li><span><span class="see">Jump at takeoff/landing only:</span> ground effect on baro; normal, ArduPilot compensates.</span></li>
+        <li><span><span class="see">ThH wrong or not learning:</span> <code>MOT_HOVER_LEARN=2</code> and hover a minute.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="alt"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Default</th></tr></thead><tbody>
+    <tr><td>PSC_ACCZ_P / I</td><td>Vertical acceleration controller.</td><td class="num">0.5 / 1.0</td></tr>
+    <tr><td>PSC_VELZ_P</td><td>Vertical velocity gain.</td><td class="num">5</td></tr>
+    <tr><td>PSC_POSZ_P</td><td>Altitude position gain.</td><td class="num">1</td></tr>
+    <tr><td>MOT_HOVER_LEARN</td><td>Learn hover throttle (2 = learn and save).</td><td class="num">2</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="loiter">
+  <div class="case-head">
+    <div class="tags"><span class="tag">PSCN</span><span class="tag">PSCE</span><span class="tag">NTUN</span><span class="tag">ATT</span></div>
+    <h2>Position control in Loiter</h2>
+    <p class="symptom"><b>Symptoms:</b> toilet-bowling, drifting, back-and-forth wobble while holding, overshoot when you let go of the sticks, slow or jerky braking.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>PSCN.TPN vs PN</dt><dd>Target vs actual North position (m). PSCE.TPE vs PE for East. The difference is position error.</dd></div>
+        <div><dt>PSCN.TVN vs VN</dt><dd>Target vs actual velocity (m/s). The velocity loop is where most Loiter tuning happens.</dd></div>
+        <div><dt>PSCN.TAN vs AN</dt><dd>Target vs actual acceleration. Large mismatch = the attitude loop can't deliver the requested tilt.</dd></div>
+        <div><dt>ATT.DesRoll/Pitch</dt><dd>Lean angles the position controller asks for. Pegged at LOIT_ANG_MAX means it's out of authority (wind, too heavy).</dd></div>
+      </dl>
+      <p class="small">Plot error directly in MAVExplorer: <code>graph PSCN.PN-PSCN.TPN PSCE.PE-PSCE.TPE</code>. A shape that's two sines 90° apart, growing, is a circle. The same sine on one axis only is a tuning oscillation.</p>
+      <div class="thresh"><span class="pill ok">&lt;0.5 m hover error</span><span class="pill warn">0.5–2 m drifting</span><span class="pill bad">growing circles</span></div>
+      <h3>How to react</h3>
+      <p class="small">Rule out sensors before tuning. Loiter sits on top of attitude, EKF, compass and GPS; it's the last thing to tune.</p>
+      <ul class="react">
+        <li><span><span class="see">Circles that grow (toilet bowl), N and E errors 90° out of phase:</span> heading is wrong. Compass interference or bad orientation. Go to Compass; check XKF4.SM. Not a PID problem.</span></li>
+        <li><span><span class="see">Steady oscillation on one axis, constant amplitude:</span> velocity loop too aggressive. Lower <code>PSC_VELXY_P</code> 20–30%, and <code>PSC_VELXY_D</code> if set.</span></li>
+        <li><span><span class="see">Slow drift that eventually comes back:</span> too soft. Raise <code>PSC_VELXY_I</code> (wind rejection), then <code>PSC_POSXY_P</code>.</span></li>
+        <li><span><span class="see">Steady offset in wind:</span> I too low, or DesRoll/Pitch pegged at <code>LOIT_ANG_MAX</code>.</span></li>
+        <li><span><span class="see">Overshoot after releasing sticks:</span> braking. Raise <code>LOIT_BRK_ACCEL</code> or lower <code>LOIT_BRK_DELAY</code>.</span></li>
+        <li><span><span class="see">Position jumps with no tracking issue:</span> the estimate jumped, not the copter. Check GPS and XKF4.SP at that time.</span></li>
+        <li><span><span class="see">Actual acceleration lags target:</span> the attitude/rate loop is too soft. Fix PID tuning first.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="loiter"></figure><figure class="chart" data-chart="loitvel"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Default</th></tr></thead><tbody>
+    <tr><td>PSC_POSXY_P</td><td>Position error → target velocity.</td><td class="num">1.0</td></tr>
+    <tr><td>PSC_VELXY_P</td><td>Velocity error → acceleration. Main Loiter stiffness.</td><td class="num">2.0</td></tr>
+    <tr><td>PSC_VELXY_I</td><td>Removes steady offset (wind, CG).</td><td class="num">1.0</td></tr>
+    <tr><td>PSC_VELXY_D</td><td>Damping. Raise slowly; amplifies GPS noise.</td><td class="num">0.5</td></tr>
+    <tr><td>LOIT_SPEED</td><td>Max horizontal speed, cm/s.</td><td class="num">1250</td></tr>
+    <tr><td>LOIT_ACC_MAX</td><td>Max acceleration, cm/s². Lower = smoother.</td><td class="num">500</td></tr>
+    <tr><td>LOIT_BRK_ACCEL / BRK_DELAY</td><td>Braking strength and delay after sticks centre.</td><td class="num">250 / 1.0</td></tr>
+    <tr><td>LOIT_ANG_MAX</td><td>Max lean in Loiter, deg (0 = use ANGLE_MAX).</td><td class="num">0</td></tr>
+  </tbody></table></div>
+  <p class="small">From Copter 4.7 the position-controller params are being renamed to North/East and Down naming (for example <code>PSC_NE_*</code>, <code>PSC_D_*</code>). Same meaning, different names; check your parameter list.</p>
+</section>
+
+<section class="case" id="flow">
+  <div class="case-head">
+    <div class="tags"><span class="tag">OF</span><span class="tag">RFND</span><span class="tag">XKF5</span></div>
+    <h2>Optical flow (non-GPS Loiter)</h2>
+    <p class="symptom"><b>Symptoms:</b> drifts in Loiter indoors, speeds up and runs away, position hold gets worse with height, fine over carpet and bad over smooth floor.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>OF.flowX vs bodyX</dt><dd>Flow rate vs gyro rate (rad/s), X axis. Same for flowY/bodyY. This is the calibration check: rock the copter and they should overlap.</dd></div>
+        <div><dt>OF.Qual</dt><dd>Surface quality 0–255. Want it consistently above ~100. Low over shiny/plain floors or in dim light.</dd></div>
+        <div><dt>RFND.Dist</dt><dd>Rangefinder height. Flow velocity = flow rate × height, so a bad rangefinder makes flow velocity wrong.</dd></div>
+        <div><dt>XKF5.FIX / FIY</dt><dd>EKF flow innovations. Should be small and centered on zero.</dd></div>
+        <div><dt>XKF5.HAGL</dt><dd>EKF height above ground. Compare to RFND.Dist.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">flowX amplitude larger or smaller than bodyX:</span> scale error. Adjust <code>FLOW_FXSCALER</code> / <code>FLOW_FYSCALER</code> (parts per thousand) until they match, or use the in-flight calibration aux switch (RCx_OPTION 158).</span></li>
+        <li><span><span class="see">flowX looks like bodyX inverted or mixed with Y:</span> orientation wrong. Fix <code>FLOW_ORIENT_YAW</code>. A sign error makes Loiter run away instead of hold.</span></li>
+        <li><span><span class="see">Drift only during yaw:</span> sensor offset from CG. Set <code>FLOW_POS_X/Y/Z</code>.</span></li>
+        <li><span><span class="see">Qual drops and position wanders:</span> surface texture or lighting. Add texture, more light; flow can't fix that in params.</span></li>
+        <li><span><span class="see">Worse with height:</span> rangefinder noisy or out of range, or flow rate exceeding <code>EK3_MAX_FLOW</code>. Keep within the sensor's rated height.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="flow"></figure><figure class="chart" data-chart="flowq"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>FLOW_TYPE</td><td>Sensor driver (e.g. MAVLink, MSP, PX4Flow…).</td><td>your sensor</td></tr>
+    <tr><td>FLOW_FXSCALER / FYSCALER</td><td>Scale correction, parts per thousand.</td><td class="num">±0–200</td></tr>
+    <tr><td>FLOW_ORIENT_YAW</td><td>Sensor yaw rotation, centidegrees.</td><td>match mount</td></tr>
+    <tr><td>FLOW_POS_X/Y/Z</td><td>Sensor offset from CG, metres.</td><td>measure</td></tr>
+    <tr><td>EK3_SRC1_POSXY</td><td>Horizontal position source. 0 = none (flow gives velocity only).</td><td class="num">0</td></tr>
+    <tr><td>EK3_SRC1_VELXY</td><td>Horizontal velocity source. 5 = optical flow.</td><td class="num">5</td></tr>
+    <tr><td>EK3_SRC1_POSZ</td><td>Height source. 1 baro, 2 rangefinder.</td><td class="num">1</td></tr>
+    <tr><td>EK3_SRC1_YAW</td><td>Yaw source. 1 compass.</td><td class="num">1</td></tr>
+    <tr><td>EK3_FLOW_DELAY</td><td>Flow measurement delay, ms. Wrong value adds lag and oscillation.</td><td class="num">10</td></tr>
+    <tr><td>EK3_MAX_FLOW</td><td>Max flow rate the EKF accepts, rad/s.</td><td class="num">2.5</td></tr>
+    <tr><td>RNGFND1_MAX/MIN</td><td>Rangefinder valid range (cm or m depending on version).</td><td>sensor spec</td></tr>
+  </tbody></table></div>
+  <p class="small">Check calibration on the ground first: hold the copter level 1 m over a textured surface, rock it in roll then pitch, and plot <code>OF.flowX OF.bodyX</code> and <code>OF.flowY OF.bodyY</code>. Only fly Loiter on flow once those overlap.</p>
+</section>
+
+<!-- ============ LINKS & SYSTEM ============ -->
+<div class="group"><h2>Links and system</h2></div>
+
+<section class="case" id="rc">
+  <div class="case-head">
+    <div class="tags"><span class="tag">RCIN</span><span class="tag">RSSI</span><span class="tag">ERR 2/5</span></div>
+    <h2>RC link and radio failsafe</h2>
+    <p class="symptom"><b>Symptoms:</b> unexpected RTL/Land with MODE.Rsn = 3, control freezes, "Radio Failsafe".</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>RCIN.C3</dt><dd>Throttle input (or your throttle channel). PWM receivers drop it below FS_THR_VALUE on loss.</dd></div>
+        <div><dt>RSSI.RXRSSI</dt><dd>Link quality/RSSI as reported. Slope down before a failsafe = range; a cliff = antenna, connector, or power.</dd></div>
+        <div><dt>ERR 2 / ERR 5</dt><dd>Radio frames late; radio failsafe triggered/cleared.</dd></div>
+        <div><dt>MODE.Rsn</dt><dd>3 = mode changed by radio failsafe.</dd></div>
+      </dl>
+      <p class="small">With CRSF/ELRS/SBUS the receiver usually stops sending frames on loss; RCIN then freezes at its last value and the FC detects the timeout (ERR 2). Don't expect the throttle dip shown in the graph with those.</p>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">RSSI fades gradually first:</span> range or antenna orientation. Check RX antenna placement and TX power.</span></li>
+        <li><span><span class="see">Short dropouts at high throttle:</span> RX antenna near carbon or power wires, or RX brownout.</span></li>
+        <li><span><span class="see">Failsafe while RSSI looked fine:</span> UART framing or wiring. Check <code>SERIALn_PROTOCOL=23</code> and baud.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="rc"></figure></div>
+  </div>
+  <div class="tablewrap"><table><thead><tr><th>Parameter</th><th>What it does</th><th>Typical</th></tr></thead><tbody>
+    <tr><td>FS_THR_ENABLE</td><td>Radio failsafe action: 1 RTL, 3 Land, 4 SmartRTL→RTL…</td><td class="num">1</td></tr>
+    <tr><td>FS_THR_VALUE</td><td>PWM below which throttle means "signal lost".</td><td class="num">975</td></tr>
+    <tr><td>RC_FS_TIMEOUT</td><td>Seconds without frames before failsafe.</td><td class="num">1.0</td></tr>
+    <tr><td>RSSI_TYPE</td><td>Where RSSI comes from (3 = RC protocol).</td><td class="num">3</td></tr>
+    <tr><td>FS_OPTIONS</td><td>Continue mission / landing on failsafe, etc.</td><td>bitmask</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="case" id="cpu">
+  <div class="case-head">
+    <div class="tags"><span class="tag">PM</span><span class="tag">DSF</span></div>
+    <h2>CPU load and logging gaps</h2>
+    <p class="symptom"><b>Symptoms:</b> gaps in the log, jerky control, "Internal errors", odd behaviour after enabling high-rate logging, Lua scripts, or many peripherals.</p>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <h3>Where to look</h3>
+      <dl class="fields">
+        <div><dt>PM.Load</dt><dd>CPU load, in tenths of a percent (300 = 30%).</dd></div>
+        <div><dt>PM.NLon / NLoop</dt><dd>Long loops vs total loops. NLon should be a tiny fraction.</dd></div>
+        <div><dt>PM.MaxT</dt><dd>Longest loop, µs. At 400 Hz the budget is 2500 µs.</dd></div>
+        <div><dt>DSF.Dp</dt><dd>Dropped log messages. Nonzero means slow SD card or too much logging.</dd></div>
+        <div><dt>PM.IntE</dt><dd>Internal error bitmask. Any nonzero value is worth reporting.</dd></div>
+      </dl>
+      <h3>How to react</h3>
+      <ul class="react">
+        <li><span><span class="see">Load high after enabling raw IMU / batch logging:</span> expected while tuning; turn it off afterward.</span></li>
+        <li><span><span class="see">DSF.Dp rising:</span> replace SD card (fast, small, freshly formatted), trim <code>LOG_BITMASK</code>.</span></li>
+        <li><span><span class="see">F4/F7 board pegged with many features:</span> reduce <code>SCHED_LOOP_RATE</code> only as last resort; disable unused scripts and peripherals first.</span></li>
+      </ul>
+    </div>
+    <div class="col"><figure class="chart" data-chart="cpu"></figure></div>
+  </div>
+</section>
+
+<!-- ============ PARAM SHEET ============ -->
+<div class="group"><h2>Reference</h2></div>
+<section class="block" id="params">
+  <div class="case-head"><h2>Symptom → first plot → first parameter</h2>
+  <p class="symptom">One-line lookup for the field.</p></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Symptom</th><th>Plot first</th><th>Then</th><th>Likely knob</th></tr></thead>
+    <tbody>
+      <tr><td>Alt climbs/drops</td><td>VIBE.VibeZ</td><td>CTUN.Alt, BAlt</td><td>mechanical, then PSC_ACCZ_*</td></tr>
+      <tr><td>Wobble / bounce</td><td>RATE.RDes, R</td><td>ISBH spectrum</td><td>ATC_RAT_*_D, P; INS_HNTCH_*</td></tr>
+      <tr><td>Hot motors</td><td>Filter Review</td><td>RATE.ROut noise</td><td>INS_HNTCH_*, ATC_RAT_*_FLTD</td></tr>
+      <tr><td>Yaw drift</td><td>RCOU C1–C4</td><td>PIDY.I</td><td>motor alignment, MOT_YAW_HEADROOM</td></tr>
+      <tr><td>Toilet bowl</td><td>|MAG| vs BAT.Curr</td><td>XKF4.SM</td><td>COMPASS_MOT_*, ORIENT</td></tr>
+      <tr><td>Loiter drift/jump</td><td>GPS.NSats, HDop</td><td>XKF4.SP, SV</td><td>GPS placement, GNSS_MODE</td></tr>
+      <tr><td>Loiter oscillates</td><td>PSCN.TVN vs VN</td><td>error shape N vs E</td><td>PSC_VELXY_P/D</td></tr>
+      <tr><td>Loiter drifts (flow)</td><td>OF.flowX vs bodyX</td><td>OF.Qual, RFND.Dist</td><td>FLOW_*SCALER, ORIENT_YAW</td></tr>
+      <tr><td>Early battery FS</td><td>BAT.Volt vs VoltR</td><td>BAT.Curr</td><td>BATT_FS_VOLTSRC=1</td></tr>
+      <tr><td>Thrust loss msg</td><td>RCOU</td><td>BAT.Volt</td><td>hardware, weight</td></tr>
+      <tr><td>Unexpected RTL</td><td>MODE.Rsn</td><td>ERR, RCIN, BAT</td><td>failsafe that fired</td></tr>
+      <tr><td>Log ends mid-air</td><td>POWR.Vcc, BAT.Volt</td><td>RCOU last second</td><td>power wiring</td></tr>
+      <tr><td>Log gaps</td><td>DSF.Dp, PM.Load</td><td>—</td><td>SD card, LOG_BITMASK</td></tr>
+    </tbody>
+  </table></div>
+  <p class="callout">Order of fixes matters: <b>mechanical → power → filters → PIDs → navigation</b>. Retuning PIDs on a frame with bad vibration or a wrong notch just bakes the problem into the gains.</p>
+</section>
+</div>
+
+<script>
+(function(){
+// ---------- data helpers ----------
+function R(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function G(seed){const r=R(seed);return()=>{let u=r()||1e-9,v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}}
+const T=(n,a,b)=>Array.from({length:n},(_,i)=>a+(b-a)*i/(n-1));
+const Z=(xs,ys)=>xs.map((x,i)=>[x,ys[i]]).filter(p=>p[1]!==null);
+const lp=(arr,a)=>{let y=arr[0];return arr.map(v=>y+=a*(v-y))};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+const C={};
+
+// VIBE
+(()=>{const t=T(400,0,60),g=G(1),g2=G(2),r=R(3);
+ const good={series:[
+  {n:'VibeX',c:'s1',d:Z(t,lp(t.map(()=>Math.max(0,5+1.8*g())),.5))},
+  {n:'VibeY',c:'s3',d:Z(t,lp(t.map(()=>Math.max(0,5.5+1.8*g())),.5))},
+  {n:'VibeZ',c:'s2',d:Z(t,lp(t.map(()=>Math.max(0,9+2.5*g())),.5))}],
+  note:'All axes under 15 m/s², Z a little above X/Y as usual. VIBE.Clip stays at 0.'};
+ const bad={series:[
+  {n:'VibeX',c:'s1',d:Z(t,lp(t.map(()=>Math.max(0,22+5*g2())),.5))},
+  {n:'VibeY',c:'s3',d:Z(t,lp(t.map(()=>Math.max(0,25+5*g2())),.5))},
+  {n:'VibeZ',c:'s2',d:Z(t,lp(t.map(()=>Math.max(0,36+7*g2()+(r()<.05?25+15*r():0))),.6))}],
+  note:'VibeZ sits above 30 with spikes past 60. Expect altitude errors in AltHold and Clip counts rising. Fix props/mounting before touching any tuning.'};
+ C.vibe={title:'VIBE.VibeX/Y/Z · m/s²',x:[0,60],y:[0,80],xu:'s',
+  bands:[[0,15,'ok'],[30,60,'warn'],[60,80,'bad']],lines:[[30,'30 problem threshold'],[60,'60 severe']],good,bad};
+})();
+
+// FFT
+(()=>{const f=T(250,0,500),g=G(4);
+ const base=f.map(x=>-58+3*g()+12*Math.exp(-x/35));
+ const pk=x=>36*Math.exp(-(((x-165)/9)**2))+22*Math.exp(-(((x-330)/12)**2));
+ const raw=f.map((x,i)=>base[i]+pk(x));
+ const lpf=x=>-10*Math.log10(1+(x/80)**4);
+ const notch=(x,c)=>-30*Math.exp(-(((x-c)/(c*0.12))**2))-26*Math.exp(-(((x-2*c)/(c*0.2))**2));
+ const post=c=>f.map((x,i)=>raw[i]+lpf(x)+notch(x,c));
+ C.fft={title:'Gyro X spectrum · dB vs Hz (Filter Review)',x:[0,500],y:[-100,-10],xu:'Hz',xticks:[0,100,200,300,400,500],
+  lines:[],
+  good:{series:[{n:'Pre-filter',c:'s2',d:Z(f,raw)},{n:'Post-filter',c:'s1',d:Z(f,post(165))}],
+   note:'Motor peak at 165 Hz and its 2nd harmonic at 330 Hz are both removed after filtering. INS_HNTCH_FREQ matches the peak; with ESC RPM tracking it follows throttle.'},
+  bad:{series:[{n:'Pre-filter',c:'s2',d:Z(f,raw)},{n:'Post-filter',c:'s1',d:Z(f,post(120))}],
+   note:'Notch centered at 120 Hz, but the real peak is at 165 Hz. The post-filter trace still shows both peaks, and the misplaced notch only adds phase lag. Move INS_HNTCH_FREQ/REF or switch to ESC tracking.'}};
+})();
+
+// RATE
+(()=>{const n=800,t=T(n,0,4),dt=4/(n-1),g=G(5);
+ const des=lp(t.map(x=>x<.5?0:x<1.3?120:x<2?0:x<2.8?-120:0),.15);
+ const sim=(wn,z)=>{let a=0,v=0;return des.map(d=>{v+=(wn*wn*(d-a)-2*z*wn*v)*dt;a+=v*dt;return a})};
+ const good=sim(45,.75).map(v=>v+1.5*g());
+ const bad=sim(45,.2).map((v,i)=>v+11*Math.sin(2*Math.PI*14*t[i])+2*g());
+ C.rate={title:'RATE.RDes vs RATE.R · deg/s',x:[0,4],y:[-180,180],xu:'s',lines:[],
+  good:{series:[{n:'RDes',c:'s2',d:Z(t,des)},{n:'R (actual)',c:'s1',d:Z(t,good)}],
+   note:'Actual follows desired with a small delay and little overshoot. No fuzz on the flat sections.'},
+  bad:{series:[{n:'RDes',c:'s2',d:Z(t,des)},{n:'R (actual)',c:'s1',d:Z(t,bad)}],
+   note:'Big overshoot on every step plus a constant ~14 Hz oscillation even when desired is flat. Lower D first, then P. Check the spectrum: if 14 Hz isn’t a motor peak, it’s the PID loop itself.'}};
+})();
+
+// ATT crash
+(()=>{const t=T(500,0,50),g=G(6);
+ const des=lp(t.map(x=>12*Math.sin(.4*x)+6*Math.sin(1.3*x)),.3);
+ const roll=lp(des,.25).map(v=>v+.6*g());
+ const badDes=des.map((v,i)=>t[i]>33?null:v);
+ const r30=roll[t.findIndex(x=>x>=30)];
+ const badRoll=t.map((x,i)=>x>33?null:x<30?roll[i]:Math.min(125,r30+2*(Math.exp(2.6*(x-30))-1)));
+ C.att={title:'ATT.DesRoll vs ATT.Roll · deg',x:[0,50],y:[-40,130],xu:'s',lines:[],
+  good:{series:[{n:'DesRoll',c:'s2',d:Z(t,des)},{n:'Roll',c:'s1',d:Z(t,roll)}],
+   note:'Roll tracks the desired angle within a degree or two for the whole flight.'},
+  bad:{series:[{n:'DesRoll',c:'s2',d:Z(t,badDes)},{n:'Roll',c:'s1',d:Z(t,badRoll)}],
+   note:'At 30 s roll runs away while desired stays near level, then the log ends at 33 s. The airframe lost authority: check RCOU at 29–30 s for the motor that saturated.'}};
+})();
+
+// RCOU
+(()=>{const t=T(300,0,30),g=G(7);
+ const mk=(off,s)=>lp(t.map(x=>1490+off+15*Math.sin(.5*x+s)+18*g()),.4);
+ const good={series:[{n:'C1',c:'s1',d:Z(t,mk(8,0))},{n:'C2',c:'s2',d:Z(t,mk(-6,1))},{n:'C3',c:'s3',d:Z(t,mk(4,2))},{n:'C4',c:'s4',d:Z(t,mk(-10,3))}],
+  note:'All four motors within ~40 µs of each other around 1500 in hover. Plenty of headroom both ways.'};
+ const ramp=(x,a,b)=>clamp((x-12)/1.5,0,1)*(b-a)+a;
+ const c1=lp(t.map(x=>x<12?1495+18*g():Math.min(2000,ramp(x,1495,2040)+15*g())),.5).map(v=>Math.min(2000,v));
+ const c2=lp(t.map(x=>x<12?1485+18*g():ramp(x,1485,1170)+18*g()),.5);
+ const c3=lp(t.map(x=>x<12?1500+18*g():ramp(x,1500,1560)+18*g()),.5);
+ const c4=lp(t.map(x=>x<12?1480+18*g():ramp(x,1480,1545)+18*g()),.5);
+ C.motors={title:'RCOU.C1–C4 · PWM µs',x:[0,30],y:[1000,2060],xu:'s',
+  lines:[[2000,'MOT_PWM_MAX'],[1150,'≈ MOT_SPIN_MIN']],good,
+  bad:{series:[{n:'C1',c:'s1',d:Z(t,c1)},{n:'C2',c:'s2',d:Z(t,c2)},{n:'C3',c:'s3',d:Z(t,c3)},{n:'C4',c:'s4',d:Z(t,c4)}],
+   note:'From 12 s, C1 is pinned at 2000 while its diagonal C2 drops toward minimum. Motor 1 (front-right) is not producing the thrust it’s asked for: damaged prop, failing motor or ESC. Expect "Potential Thrust Loss (1)".'}};
+})();
+
+// BAT
+(()=>{const t=T(480,0,240),g=G(8);
+ const P=[30,72,115,150,188,222];
+ const I=lp(t.map(x=>14+(P.some(p=>x>=p&&x<p+3)?60:0)),.5);
+ const restG=t.map(x=>16.6-1.5*(x/240)-.25*(x/240)**3);
+ const restB=t.map(x=>16.4-2.0*(x/240)-.3*(x/240)**3);
+ C.batt={title:'BAT.Volt and BAT.VoltR · V (4S)',x:[0,240],y:[11.5,17],xu:'s',
+  bands:[[11.5,14,'bad']],lines:[[14,'BATT_LOW_VOLT 14.0']],
+  good:{series:[{n:'Volt',c:'s1',d:Z(t,restG.map((v,i)=>v-.008*I[i]+.02*g()))},{n:'VoltR',c:'s2',d:Z(t,restG.map(v=>v-.02))}],
+   note:'Punches pull ~0.5 V from the pack. Volt and VoltR stay well above the low threshold through the flight.'},
+  bad:{series:[{n:'Volt',c:'s1',d:Z(t,restB.map((v,i)=>v-.035*I[i]+.02*g()))},{n:'VoltR',c:'s2',d:Z(t,restB)}],
+   note:'Each punch sags over 2 V and dips below 14.0 V early in the flight, while VoltR (sag-compensated) is still above 15 V. With BATT_FS_VOLTSRC=0 this can trigger a false failsafe. Set it to 1 and check the pack’s internal resistance.'}};
+})();
+
+// VCC
+(()=>{const t=T(600,0,60),g=G(9),r=R(10);
+ const ev=[];for(let i=0;i<9;i++)ev.push(3+r()*54);
+ C.vcc={title:'POWR.Vcc · V',x:[0,60],y:[4.3,5.3],xu:'s',bands:[[4.3,4.6,'bad']],lines:[[4.8,'≈ concern']],
+  good:{series:[{n:'Vcc',c:'s1',d:Z(t,t.map(()=>5.05+.008*g()))}],note:'Flat line at 5.05 V. This is what a dedicated, clean BEC looks like.'},
+  bad:{series:[{n:'Vcc',c:'s1',d:Z(t,t.map(x=>4.98+.03*g()-(ev.some(e=>x>=e&&x<e+.35)?.4:0)))}],
+   note:'Rail rides low and dips by ~0.4 V when a servo/VTX/camera draws current. Sensors can glitch or the board can brown out. Separate the noisy loads onto their own BEC.'}};
+})();
+
+// MAG
+(()=>{const t=T(400,0,60),g=G(11);
+ const P=[10,25,40,52];
+ const I=lp(t.map(x=>12+(P.some(p=>x>=p&&x<p+4)?38:0)),.15);
+ C.mag={title:'|MAG| field length (mGauss) vs BAT.Curr ×5',x:[0,60],y:[0,600],xu:'s',lines:[],
+  good:{series:[{n:'|MAG|',c:'s1',d:Z(t,I.map(i=>480+.15*i+3*g()))},{n:'BAT.Curr ×5',c:'s2',d:Z(t,I.map(i=>i*5))}],
+   note:'Field length stays flat regardless of current. The compass is far enough from power wiring.'},
+  bad:{series:[{n:'|MAG|',c:'s1',d:Z(t,I.map(i=>480-2.4*i+4*g()))},{n:'BAT.Curr ×5',c:'s2',d:Z(t,I.map(i=>i*5))}],
+   note:'Every current spike pulls the field down ~20%. The heading will swing on punches, and XKF4.SM will rise. Relocate the compass, then run compassmot or MAGFit with COMPASS_MOTCT=2.'}};
+})();
+
+// GPS
+(()=>{const t=T(240,0,120),g=G(12),r=R(13);
+ let s=18;const ns=t.map(()=>{if(r()<.04)s=clamp(s+(r()<.5?-1:1),17,20);return s});
+ let b=17;const nsb=t.map(x=>{if(x<40){if(r()<.04)b=clamp(b+(r()<.5?-1:1),16,19);return b} if(r()<.12)b=clamp(b+(r()<.5?-1:1),7,12); if(x<41)b=11; return b});
+ C.gps={title:'GPS.NSats and GPS.HDop ×10',x:[0,120],y:[0,30],xu:'s',lines:[[14,'GPS_HDOP_GOOD 1.4 (×10)']],
+  good:{series:[{n:'NSats',c:'s1',d:Z(t,ns)},{n:'HDop ×10',c:'s2',d:Z(t,lp(t.map(()=>7+.5*g()),.3))}],
+   note:'18–20 satellites and HDop around 0.7 for the whole flight.'},
+  bad:{series:[{n:'NSats',c:'s1',d:Z(t,nsb)},{n:'HDop ×10',c:'s2',d:Z(t,lp(t.map(x=>x<40?7+.5*g():20+3*g()),.3))}],
+   note:'At 40 s something switches on (here: VTX to high power) and satellites fall from 17 to 7–12 while HDop jumps above 1.4. Classic RF interference. Find what changed at that timestamp.'}};
+})();
+
+// EKF
+(()=>{const t=T(480,0,120),g=G(14);
+ const a=k=>Math.abs(g())*k;
+ C.ekf={title:'XKF4 test ratios (core 0)',x:[0,120],y:[0,1.8],xu:'s',bands:[[.5,1,'warn'],[1,1.8,'bad']],lines:[[.8,'FS_EKF_THRESH 0.8']],
+  good:{series:[{n:'SV',c:'s1',d:Z(t,lp(t.map(()=>.12+a(.04)),.3))},{n:'SP',c:'s3',d:Z(t,lp(t.map(()=>.08+a(.03)),.3))},{n:'SH',c:'s4',d:Z(t,lp(t.map(()=>.06+a(.03)),.3))},{n:'SM',c:'s2',d:Z(t,lp(t.map(()=>.18+a(.05)),.3))}],
+   note:'All four ratios stay well under 0.5. The EKF agrees with every sensor.'},
+  bad:{series:[
+   {n:'SV',c:'s1',d:Z(t,lp(t.map(x=>(x>74&&x<78?1.5:.14)+a(.05)),.3))},
+   {n:'SP',c:'s3',d:Z(t,lp(t.map(x=>(x>74&&x<78?.9:.1)+a(.04)),.3))},
+   {n:'SH',c:'s4',d:Z(t,lp(t.map(()=>.08+a(.03)),.3))},
+   {n:'SM',c:'s2',d:Z(t,lp(t.map(x=>.18+Math.min(1.15,Math.max(0,(x-30)/60*1.15))+a(.1)),.3))}],
+   note:'Two separate problems. SM creeps up from 30 s and passes 1 (compass rejected: check interference). At 75 s SV and SP spike together (GPS glitch). Two variances above 0.8 at once is what triggers the EKF failsafe.'}};
+})();
+
+// ALT
+(()=>{const t=T(400,0,60),g=G(15);
+ const d=t.map(x=>x<20?10:x<22?10+(x-20)*2.5:x<40?15:x<42?15-(x-40)*2.5:10);
+ C.alt={title:'CTUN.DAlt vs CTUN.Alt · m',x:[0,60],y:[6,19],xu:'s',lines:[],
+  good:{series:[{n:'DAlt',c:'s2',d:Z(t,d)},{n:'Alt',c:'s1',d:Z(t,lp(d,.12).map(v=>v+.08*g()))}],
+   note:'Alt follows the climb and descent with a small lag and settles without overshoot.'},
+  bad:{series:[{n:'DAlt',c:'s2',d:Z(t,d)},{n:'Alt',c:'s1',d:Z(t,lp(d,.06).map((v,i)=>v+1.1*Math.sin(2*Math.PI*.45*t[i])+.1*g()))}],
+   note:'Slow ±1 m bounce at ~0.45 Hz that never settles. If VibeZ is fine, lower PSC_ACCZ_P and PSC_ACCZ_I together by ~25%.'}};
+})();
+
+// LOITER position error
+(()=>{const t=T(600,0,60),g=G(21);
+ const gn=lp(t.map(()=>.12*g()),.05),ge=lp(t.map(()=>.12*g()),.05);
+ const amp=t.map(x=>.3+x*.05),w=2*Math.PI*.15;
+ C.loiter={title:'Position error · PSCN.PN−TPN, PSCE.PE−TPE · m',x:[0,60],y:[-4,4],xu:'s',bands:[[-4,-2,'bad'],[2,4,'bad']],lines:[[0,'']],
+  good:{series:[{n:'North error',c:'s1',d:Z(t,gn)},{n:'East error',c:'s2',d:Z(t,ge)}],
+   note:'Both errors wander within ±0.3 m. A well-behaved Loiter with a clean compass and GPS.'},
+  bad:{series:[{n:'North error',c:'s1',d:Z(t,t.map((x,i)=>amp[i]*Math.sin(w*x)+.05*g()))},{n:'East error',c:'s2',d:Z(t,t.map((x,i)=>amp[i]*Math.cos(w*x)+.05*g()))}],
+   note:'North and East are the same slow sine, 90° apart, with growing amplitude. That is a circle getting wider: toilet-bowling from a heading error. Fix the compass; changing PSC gains will not cure this.'}};
+})();
+// LOITER velocity tracking
+(()=>{const t=T(600,0,30),g=G(22);
+ const tv=lp(t.map(x=>x<5?0:x<12?4:x<20?0:x<25?-3:0),.06);
+ const sim=(wn,z)=>{let a=0,v=0,dt=30/599;return tv.map(d=>{v+=(wn*wn*(d-a)-2*z*wn*v)*dt;a+=v*dt;return a})};
+ C.loitvel={title:'PSCN.TVN vs PSCN.VN · m/s',x:[0,30],y:[-5,6],xu:'s',lines:[],
+  good:{series:[{n:'TVN (target)',c:'s2',d:Z(t,tv)},{n:'VN (actual)',c:'s1',d:Z(t,sim(4,.8).map(v=>v+.05*g()))}],
+   note:'Actual velocity follows the target with a short lag, then settles. Braking at 12 s and 25 s is clean.'},
+  bad:{series:[{n:'TVN (target)',c:'s2',d:Z(t,tv)},{n:'VN (actual)',c:'s1',d:Z(t,sim(4,.12).map((v,i)=>v+.35*Math.sin(2*Math.PI*.9*t[i])+.05*g()))}],
+   note:'Overshoot and ringing on every change, plus a steady ~0.9 Hz back-and-forth on this axis only. The velocity loop is too aggressive: lower PSC_VELXY_P (and D).'}};
+})();
+// FLOW calibration
+(()=>{const t=T(500,0,20),g=G(23);
+ const body=t.map(x=>x<2||x>18?0:1.2*Math.sin(2*Math.PI*.6*x)*Math.min(1,(x-2)/1));
+ C.flow={title:'OF.flowX vs OF.bodyX · rad/s (rocking in roll)',x:[0,20],y:[-2.2,2.2],xu:'s',lines:[],
+  good:{series:[{n:'bodyX (gyro)',c:'s2',d:Z(t,body)},{n:'flowX',c:'s1',d:Z(t,body.map(v=>v*1.02+.04*g()))}],
+   note:'flowX lies on top of bodyX: scaling and orientation are correct.'},
+  bad:{series:[{n:'bodyX (gyro)',c:'s2',d:Z(t,body)},{n:'flowX',c:'s1',d:Z(t,body.map(v=>v*1.45+.05*g()))}],
+   note:'flowX is about 45% larger than bodyX. The EKF will overestimate speed and Loiter will feel twitchy or oscillate. Correct FLOW_FXSCALER. If flowX were the mirror image of bodyX, the fix would be FLOW_ORIENT_YAW instead.'}};
+})();
+// FLOW quality vs drift
+(()=>{const t=T(400,0,60),g=G(24),r=R(25);
+ C.flowq={title:'OF.Qual (0–255) and XKF5.FIX ×100',x:[0,60],y:[-60,260],xu:'s',lines:[[100,'Qual ≈ 100']],
+  good:{series:[{n:'OF.Qual',c:'s3',d:Z(t,lp(t.map(()=>clamp(190+15*g(),0,255)),.2))},{n:'FIX ×100',c:'s4',d:Z(t,lp(t.map(()=>4*g()),.3))}],
+   note:'Quality steady around 190 and flow innovations small around zero.'},
+  bad:{series:[{n:'OF.Qual',c:'s3',d:Z(t,lp(t.map(x=>clamp((x>25&&x<45?55:180)+20*g(),0,255)),.15))},{n:'FIX ×100',c:'s4',d:Z(t,lp(t.map(x=>(x>25&&x<45?25:0)*g()+3*g()),.3))}],
+   note:'From 25 to 45 s quality drops below 100 (flying over a smooth floor) and the flow innovations get large. That is where the drift happens. The surface is the problem, not the tuning.'}};
+})();
+
+// RC
+(()=>{const t=T(600,0,60),g=G(16);
+ const thr=t.map(x=>1450+200*Math.sin(.3*x)+80*Math.sin(1.1*x)+8*g());
+ C.rc={title:'RCIN.C3 (throttle) · PWM µs',x:[0,60],y:[850,2000],xu:'s',bands:[[850,975,'bad']],lines:[[975,'FS_THR_VALUE 975']],
+  good:{series:[{n:'RCIN.C3',c:'s1',d:Z(t,thr)}],note:'Throttle moves within normal stick range and never approaches the failsafe value.'},
+  bad:{series:[{n:'RCIN.C3',c:'s1',d:Z(t,thr.map((v,i)=>t[i]>=35&&t[i]<37.5?900:v))}],
+   note:'At 35 s the receiver outputs its failsafe value (900) for 2.5 s. ERR 5/1 is logged and MODE changes with Rsn=3. Check RSSI just before 35 s to see if it faded or dropped off a cliff.'}};
+})();
+
+// CPU
+(()=>{const t=T(300,0,300),g=G(17),r=R(18);
+ C.cpu={title:'PM.Load · % (log value ÷ 10)',x:[0,300],y:[0,105],xu:'s',bands:[[80,105,'warn']],lines:[[80,'investigate above 80%']],
+  good:{series:[{n:'Load %',c:'s1',d:Z(t,t.map(()=>30+2*g()))}],note:'Steady around 30%. PM.NLon is a tiny fraction of NLoop.'},
+  bad:{series:[{n:'Load %',c:'s1',d:Z(t,t.map(()=>clamp(80+5*g()+(r()<.08?15:0),0,100)))}],
+   note:'Load above 80% with spikes to 100%. Loops overrun, logging drops (DSF.Dp) and control gets less consistent. Turn off raw/batch IMU logging and unused features.'}};
+})();
+
+// ---------- renderer ----------
+const W=640,H=250,M={l:46,r:14,t:12,b:30};
+function nice(a,b,n){const s=(b-a)/n,p=Math.pow(10,Math.floor(Math.log10(s))),m=s/p,st=(m<1.5?1:m<3?2:m<7?5:10)*p;const out=[];for(let v=Math.ceil(a/st)*st;v<=b+1e-9;v+=st)out.push(+v.toFixed(6));return out}
+function fmt(v){return Math.abs(v)>=100||Number.isInteger(v)?String(Math.round(v)):v.toFixed(Math.abs(v)<1?1:1)}
+function svgFor(spec,st){
+  const [x0,x1]=spec.x,[y0,y1]=spec.y;
+  const sx=x=>M.l+(x-x0)/(x1-x0)*(W-M.l-M.r);
+  const sy=y=>M.t+(1-(y-y0)/(y1-y0))*(H-M.t-M.b);
+  let s=`<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="${spec.title}">`;
+  (spec.bands||[]).forEach(([a,b,k])=>{s+=`<rect x="${M.l}" y="${sy(b)}" width="${W-M.l-M.r}" height="${sy(a)-sy(b)}" fill="var(--${k})" fill-opacity="0.09"/>`});
+  nice(y0,y1,5).forEach(v=>{s+=`<line class="gl" x1="${M.l}" x2="${W-M.r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${M.l-6}" y="${sy(v)+3}" text-anchor="end">${fmt(v)}</text>`});
+  (spec.xticks||nice(x0,x1,6)).forEach(v=>{s+=`<text x="${sx(v)}" y="${H-M.b+16}" text-anchor="middle">${fmt(v)}</text>`});
+  s+=`<text x="${W-M.r}" y="${H-4}" text-anchor="end">${spec.xu}</text>`;
+  s+=`<line class="ax" x1="${M.l}" x2="${W-M.r}" y1="${H-M.b}" y2="${H-M.b}"/>`;
+  (spec.lines||[]).forEach(([v,l])=>{s+=`<line x1="${M.l}" x2="${W-M.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--ink)" stroke-opacity=".55" stroke-dasharray="4 4"/><text x="${W-M.r-4}" y="${sy(v)-4}" text-anchor="end" style="fill:var(--ink)">${l}</text>`});
+  st.series.forEach(se=>{const pts=se.d.map(([x,y])=>`${sx(x).toFixed(1)},${sy(clamp(y,y0,y1)).toFixed(1)}`).join(' ');
+    s+=`<polyline points="${pts}" fill="none" stroke="var(--${se.c})" stroke-width="1.6" stroke-linejoin="round"/>`});
+  return s+'</svg>';
+}
+document.querySelectorAll('figure.chart').forEach(fig=>{
+  const spec=C[fig.dataset.chart]; if(!spec)return;
+  fig.innerHTML=`<div class="chart-top"><span class="chart-title">${spec.title}</span><div class="seg" role="group" aria-label="Example"><button type="button" class="bad" data-k="bad" aria-pressed="true">Problem</button><button type="button" data-k="good" aria-pressed="false">Healthy</button></div></div><div class="plotbox"></div><div class="legend"></div><p class="note"></p>`;
+  const box=fig.querySelector('.plotbox'),leg=fig.querySelector('.legend'),note=fig.querySelector('.note');
+  const show=k=>{const st=spec[k];box.innerHTML=svgFor(spec,st);
+    leg.innerHTML=st.series.map(se=>`<span><i style="background:var(--${se.c})"></i>${se.n}</span>`).join('');
+    note.textContent=st.note;note.className='note '+(k==='bad'?'bad':'ok');
+    fig.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k))};
+  fig.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.k)));
+  show('bad');
+});
+})();
+</script>
+
+</body>
+</html>
